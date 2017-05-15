@@ -4,7 +4,7 @@ CFLAGS  = -g -Wall
 all:  nat_traversal
 
 nat_traversal:  main.o nat_traversal.o nat_type.o 
-	$(CC) $(CFLAGS) -o nat_traversal main.o nat_traversal.o nat_type.o
+	$(CC) $(CFLAGS) -o nat_traversal main.o nat_traversal.o nat_type.o -pthread
 
 main.o:  main.c
 	$(CC) $(CFLAGS) -c main.c
