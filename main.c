@@ -104,12 +104,15 @@ int main(int argc, char** argv)
     }
 
     if (peer_id) {
-        printf("connecting to peer %d", peer_id);
+        printf("connecting to peer %d\n", peer_id);
         if (connect_to_peer(&c, peer_id) < 0) {
             printf("failed to connect to peer %d\n", peer_id);
 
             return -1;
         }
+    }
+
+    for (; ;) {
     }
 
     return 0;

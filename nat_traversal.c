@@ -328,7 +328,7 @@ int init(struct peer_info self, struct sockaddr_in punch_server, client* c) {
     pthread_t thread_id;
     pthread_create(&thread_id, NULL, server_notify_handler, (void*)&server_sock);
 
-    pthread_join(thread_id, NULL);
+    //pthread_join(thread_id, NULL);
 
     return 0;
 }
