@@ -87,6 +87,9 @@ int main(int argc, char** argv)
         return -1;
     }
     struct peer_info self;
+    strncpy(self.ip, ext_ip, 16);
+    self.port = ext_port;
+    self.type = type;
 
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
