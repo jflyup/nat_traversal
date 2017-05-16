@@ -64,7 +64,7 @@ func handleConn(c net.Conn) {
 			var peer nat_info
 			err = binary.Read(c, binary.BigEndian, &peer)
 			if err != nil {
-				return
+				continue
 			}
 
 			fmt.Println("peer enrolled, addr: ", string(peer.Ip[:]), peer.Port, peer.Nat_type)
@@ -76,6 +76,10 @@ func handleConn(c net.Conn) {
 			peers_conn[peerID] = c
 			fmt.Println("new peer, id : ", peerID)
 			m.Unlock()
+			err = binary.Write(c, binary.BigEndian, peerID)
+			if err != nil {
+				continue
+			}
 		case GetPeerInfo:
 			var peer_id uint32
 			binary.Read(c, binary.BigEndian, &peer_id)

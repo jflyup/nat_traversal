@@ -308,6 +308,16 @@ int init(struct peer_info self, struct sockaddr_in punch_server, client* c) {
         return -1;
     }
 
+    // wait for server reply to get own ID
+    uint32_t peer_id = 0;
+    int n = recv(server_sock, &peer_id, sizeof(uint32_t), 0);
+    if (n != 4) {
+        printf("failed to enroll\n");
+        return -1;
+    }
+
+    printf("enroll successfully, ID: %d", ntohl(peer_id));
+
     // wait for message from punch server in another thread
     pthread_t thread_id;
     pthread_create(&thread_id, NULL, server_notify_handler, (void*)&server_sock);
