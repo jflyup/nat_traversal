@@ -3,6 +3,7 @@ CFLAGS  = -g -Wall
 
 all:  nat_traversal
 
+# clang warn about unused argument, it requires -pthread when compiling but not when linking
 nat_traversal:  main.o nat_traversal.o nat_type.o 
 	$(CC) $(CFLAGS) -o nat_traversal main.o nat_traversal.o nat_type.o -pthread
 

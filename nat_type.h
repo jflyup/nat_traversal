@@ -76,6 +76,12 @@ typedef struct
 char* encode16(char* buf, uint16_t data);
 char* encode32(char* buf, uint32_t data);
 char* encode(char* buf, const char* data, unsigned int length);
+extern int verbose;
+
+#define verbose_log(format, ...) do {       \
+        if (verbose)                        \
+            printf(format, ##__VA_ARGS__);  \
+} while(0)
 
 nat_type detect_nat_type(const char* stun_host, uint16_t stun_port, const char* local_host, uint16_t local_port, char* ext_ip, uint16_t* ext_port);
 

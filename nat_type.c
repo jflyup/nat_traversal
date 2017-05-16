@@ -11,6 +11,8 @@
 
 #include "nat_type.h"
 
+#define MAX_RETRIES_NUM 3
+
 static const char* nat_types[] = {
 	"blocked",
 	"open internet",
@@ -125,24 +127,37 @@ static int send_bind_request(int sock, const char* remote_host, uint16_t remote_
 	memcpy(&remote_addr.sin_addr.s_addr, server->h_addr_list[0], server->h_length);
 	remote_addr.sin_port = htons(remote_port); 
 
-	if (-1 == sendto(sock, buf, ptr - buf, 0, (struct sockaddr *)&remote_addr, sizeof(remote_addr))) {
-        free(buf);
+    int retries;
+    for (retries = 0; retries < MAX_RETRIES_NUM; retries++) {
+        if (-1 == sendto(sock, buf, ptr - buf, 0, (struct sockaddr *)&remote_addr, sizeof(remote_addr))) {
+            // udp sendto barely failed
+            free(buf);
 
-		return -1;
-	}
+            return -1;
+        }
 
-	socklen_t fromlen = sizeof remote_addr;
+        socklen_t fromlen = sizeof remote_addr;
 
-	struct timeval tv;
-	tv.tv_sec = 5;
-	tv.tv_usec = 0;
-	setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+        struct timeval tv;
+        tv.tv_sec = 3;
+        tv.tv_usec = 0;
+        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 
-	if (recvfrom(sock, buf, 512, 0, (struct sockaddr *)&remote_addr, &fromlen) <= 0) {
-        free(buf);
+        if (recvfrom(sock, buf, 512, 0, (struct sockaddr *)&remote_addr, &fromlen) <= 0) {
+            if (errno != EAGAIN || errno != EWOULDBLOCK) {
+                free(buf);
 
-		return -1;
-	}
+                return -1;
+            }
+            //timout, retry
+        } else {
+            // got response
+            break;
+        }
+    }
+
+    if (retries == MAX_RETRIES_NUM)
+        return -1;
 
 	StunHeader reply_header;
 	memcpy(&reply_header, buf, sizeof(StunHeader));
@@ -278,7 +293,7 @@ nat_type detect_nat_type(const char* stun_host, uint16_t stun_port, const char* 
 	} else { 
 		if (changed_ip != 0 && changed_port != 0) {
 			if (send_bind_request(s, stun_host, stun_port, ChangeIpFlag, ChangePortFlag, bind_result)) {
-				struct in_addr addr = {changed_ip};
+				struct in_addr addr = {htonl(changed_ip)};
 				char* alt_host = inet_ntoa(addr);
 
 				memset(bind_result, 0, sizeof(StunAtrAddress) * 2);
