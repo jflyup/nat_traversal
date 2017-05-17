@@ -97,11 +97,14 @@ int main(int argc, char** argv)
     server_addr.sin_port = htons(DEFAULT_SERVER_PORT);
 
     client c;
-    if (init(self, server_addr, &c)) {
-        printf("init failed\n");
+    if (enroll(self, server_addr, &c) < 0) {
+        printf("failed to enroll\n");
 
         return -1;
     }
+    printf("enroll successfully, ID: %d\n", c.id);
+
+    pthread_t tid = wait_for_command(c.sfd);
 
     if (peer_id) {
         printf("connecting to peer %d\n", peer_id);
@@ -112,8 +115,6 @@ int main(int argc, char** argv)
         }
     }
 
-    for (; ;) {
-    }
-
+    pthread_join(tid, NULL);
     return 0;
 }

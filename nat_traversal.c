@@ -22,8 +22,8 @@
 // file scope variables
 static int nums[MAX_PORT - MIN_PORT];
 
-static int send_to_punch_server(client* c, int flags) {
-    int n = send(c->sfd, c->buf, c->msg_buf - c->buf, flags);
+static int send_to_punch_server(client* c) {
+    int n = send(c->sfd, c->buf, c->msg_buf - c->buf, 0);
     c->msg_buf= c->buf;
 
     return n;
@@ -32,7 +32,7 @@ static int send_to_punch_server(client* c, int flags) {
 static int get_peer_info(client* cli, uint32_t peer_id, struct peer_info *peer) {
     cli->msg_buf = encode16(cli->msg_buf, GetPeerInfo);
     cli->msg_buf = encode32(cli->msg_buf, peer_id);
-    if (-1 == send_to_punch_server(cli, 0)) {
+    if (-1 == send_to_punch_server(cli)) {
         return -1;
     }
 
@@ -192,7 +192,7 @@ static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_inf
     // hole punched, notify peer
     c->msg_buf = encode16(c->msg_buf, NotifyPeer);
     c->msg_buf = encode32(c->msg_buf, peer_id);
-    send_to_punch_server(c, 0);
+    send_to_punch_server(c);
 
     struct timeval timeout={10, 0};
     int fd = wait_for_peer(holes, i, &timeout);
@@ -284,7 +284,7 @@ static void* server_notify_handler(void* data) {
     return NULL;
 }
 
-int init(struct peer_info self, struct sockaddr_in punch_server, client* c) {
+int enroll(struct peer_info self, struct sockaddr_in punch_server, client* c) {
     int i, temp;
     for (i = 0, temp = MIN_PORT; temp <= MAX_PORT; i++, temp++) {
         nums[i] = temp;
@@ -305,8 +305,7 @@ int init(struct peer_info self, struct sockaddr_in punch_server, client* c) {
     c->msg_buf = encode16(c->msg_buf, self.port);
     c->msg_buf = encode16(c->msg_buf, self.type);
 
-    if (-1 == send_to_punch_server(c, 0)) {
-        printf("failed to enroll\n");
+    if (-1 == send_to_punch_server(c)) {
         return -1;
     }
 
@@ -318,19 +317,21 @@ int init(struct peer_info self, struct sockaddr_in punch_server, client* c) {
     setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
     int n = recv(server_sock, &peer_id, sizeof(uint32_t), 0);
     if (n != sizeof(uint32_t)) {
-        printf("failed to enroll\n");
         return -1;
     }
 
-    printf("enroll successfully, ID: %d\n", ntohl(peer_id));
+    c->id = ntohl(peer_id);
 
-    // wait for message from punch server in another thread
+    return 0;
+}
+
+pthread_t wait_for_command(int server_sock)
+{
+    // wait for command from punch server in another thread
     pthread_t thread_id;
     pthread_create(&thread_id, NULL, server_notify_handler, (void*)&server_sock);
 
-    //pthread_join(thread_id, NULL);
-
-    return 0;
+    return thread_id;
 }
 
 void on_connected(int sock) {

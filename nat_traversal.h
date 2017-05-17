@@ -26,6 +26,7 @@ enum msg_type {
  };
 
 // public functions
-int init(struct peer_info self, struct sockaddr_in punch_server, client* c);
+int enroll(struct peer_info self, struct sockaddr_in punch_server, client* c);
+pthread_t wait_for_command(int server_sock);
 int connect_to_peer(client* cli, uint32_t peer_id);
 void on_connected(int sock);
