@@ -30,8 +30,9 @@ int main(int argc, char** argv)
     uint16_t local_port = DEFAULT_LOCAL_PORT;
     char* punch_server = NULL;
     uint32_t peer_id = 0;
+    int ttl = 10;
 
-    static char usage[] = "usage: [-h] [-H STUN_HOST] [-P STUN_PORT] [-s punch server] [-d id] [-i SOURCE_IP] [-p SOURCE_PORT] [-v verbose]\n";
+    static char usage[] = "usage: [-h] [-H STUN_HOST] [-t ttl] [-P STUN_PORT] [-s punch server] [-d id] [-i SOURCE_IP] [-p SOURCE_PORT] [-v verbose]\n";
     int opt;
     while ((opt = getopt (argc, argv, "H:h:P:p:s:d:i")) != -1)
     {
@@ -42,6 +43,9 @@ int main(int argc, char** argv)
                 break;
             case 'H':
                 stun_server = optarg;
+                break;
+            case 't':
+                ttl = atoi(optarg);
                 break;
             case 'P':
                 stun_port = atoi(optarg);
@@ -98,6 +102,7 @@ int main(int argc, char** argv)
 
     client c;
     c.type = type;
+    c.ttl = ttl;
     if (enroll(self, server_addr, &c) < 0) {
         printf("failed to enroll\n");
 
@@ -105,7 +110,7 @@ int main(int argc, char** argv)
     }
     printf("enroll successfully, ID: %d\n", c.id);
 
-    pthread_t tid = wait_for_command(c.sfd);
+    pthread_t tid = wait_for_command(&c.sfd);
 
     if (peer_id) {
         printf("connecting to peer %d\n", peer_id);

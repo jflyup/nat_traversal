@@ -36,15 +36,18 @@ static int get_peer_info(client* cli, uint32_t peer_id, struct peer_info *peer) 
         return -1;
     }
 
-    if (recv(cli->sfd, (void*)peer, sizeof(struct peer_info), 0) < 0)
+    int n_bytes = recv(cli->sfd, (void*)peer, sizeof(struct peer_info), 0);
+    if (n_bytes <= 0) {
         return -1;
+    } else if (n_bytes == 1) {
+        // offline
+        return 1;
+    } else {
+        peer->port = ntohs(peer->port);
+        peer->type = ntohs(peer->type);
 
-    peer->port = ntohs(peer->port);
-    peer->type = ntohs(peer->type);
-
-    printf("peer %d: %s:%d, nat type: %s\n", peer_id, peer->ip, peer->port, get_nat_desc(peer->type));
-
-    return 0;
+        return 0;
+    }
 }
 
 static int send_dummy_udp_packet(int fd, struct sockaddr_in addr) {
@@ -57,7 +60,7 @@ static int send_dummy_udp_packet(int fd, struct sockaddr_in addr) {
 }
 
 
-static int punch_hole(struct sockaddr_in peer_addr) {
+static int punch_hole(struct sockaddr_in peer_addr, int ttl) {
     int hole = socket(AF_INET, SOCK_DGRAM, 0);
     if (hole != -1) {
 
@@ -76,7 +79,6 @@ static int punch_hole(struct sockaddr_in peer_addr) {
         /* TODO we can use traceroute to get the number of hops to the peer
          * to make sure this packet woudn't reach the peer but get through the NAT of itself
          */
-        int ttl = 5; 
         setsockopt(hole, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
 
         // send short ttl packets to avoid triggering flooding protection of NAT in front of peer
@@ -174,9 +176,9 @@ static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_inf
         if (port != remote_peer.port) { // exclude the used one
             peer_addr.sin_port = htons(port);
 
-            if ((holes[i] = punch_hole(peer_addr)) < 0) {
+            if ((holes[i] = punch_hole(peer_addr, c->ttl)) < 0) {
                 // NAT in front of us wound't tolerate too many ports used by one application
-                verbose_log("NAT flooding protection triggered, try %d times\n", i);
+                verbose_log("%s, NAT flooding protection triggered, try %d times\n", strerror(errno), i);
                 break;
             }
 
@@ -327,11 +329,11 @@ int enroll(struct peer_info self, struct sockaddr_in punch_server, client* c) {
     return 0;
 }
 
-pthread_t wait_for_command(int server_sock)
+pthread_t wait_for_command(int* server_sock)
 {
     // wait for command from punch server in another thread
     pthread_t thread_id;
-    pthread_create(&thread_id, NULL, server_notify_handler, (void*)&server_sock);
+    pthread_create(&thread_id, NULL, server_notify_handler, (void*)server_sock);
 
     return thread_id;
 }
@@ -353,11 +355,15 @@ void on_connected(int sock) {
 
 int connect_to_peer(client* cli, uint32_t peer_id) {
     struct peer_info peer;
-    if (get_peer_info(cli, peer_id, &peer) < 0) {
-        printf("peer %d offline\n", peer_id);
+    int n = get_peer_info(cli, peer_id, &peer);
+    if (n) {
+        verbose_log("get_peer_info() return %d\n", n);
+        printf("failed to get info of remote peer\n");
 
         return -1;
     }
+
+    printf("peer %d: %s:%d, nat type: %s\n", peer_id, peer.ip, peer.port, get_nat_desc(peer.type));
 
     // choose less restricted peer as initiator
     switch(peer.type) {
