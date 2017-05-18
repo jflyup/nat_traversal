@@ -36,15 +36,13 @@ static int get_peer_info(client* cli, uint32_t peer_id, struct peer_info *peer) 
         return -1;
     }
 
-    int bytes = recv(cli->sfd, (void*)peer, sizeof(struct peer_info), 0);
-    if (bytes < 20) {
+    if (recv(cli->sfd, (void*)peer, sizeof(struct peer_info), 0) < 0)
         return -1;
-    }
 
     peer->port = ntohs(peer->port);
     peer->type = ntohs(peer->type);
 
-    printf("peer %d info: %s:%d, nat type: %s\n", peer_id, peer->ip, peer->port, get_nat_desc(peer->type));
+    printf("peer %d: %s:%d, nat type: %s\n", peer_id, peer->ip, peer->port, get_nat_desc(peer->type));
 
     return 0;
 }
@@ -144,7 +142,7 @@ static void shuffle(int *num, int len) {
     }
 }
 
-static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_info peer) {
+static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_info remote_peer) {
     // TODO choose port prediction strategy
 
     /* 
@@ -165,7 +163,7 @@ static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_inf
     struct sockaddr_in peer_addr;
 
     peer_addr.sin_family = AF_INET;
-    peer_addr.sin_addr.s_addr = inet_addr(peer.ip);
+    peer_addr.sin_addr.s_addr = inet_addr(remote_peer.ip);
 
     int *holes = malloc(NUM_OF_PORTS * sizeof(int));
     shuffle(nums, MAX_PORT - MIN_PORT + 1);
@@ -173,12 +171,12 @@ static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_inf
     int i = 0;
     for (; i < NUM_OF_PORTS;) {
         uint16_t port = nums[i];
-        if (port != peer.port) { // exclude the known one
+        if (port != remote_peer.port) { // exclude the used one
             peer_addr.sin_port = htons(port);
 
             if ((holes[i] = punch_hole(peer_addr)) < 0) {
                 // NAT in front of us wound't tolerate too many ports used by one application
-                printf("NAT flooding protection triggered, try %d times\n", i);
+                verbose_log("NAT flooding protection triggered, try %d times\n", i);
                 break;
             }
 
@@ -189,7 +187,7 @@ static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_inf
         }
     }
 
-    // hole punched, notify peer
+    // hole punched, notify remote peer via punch server
     c->msg_buf = encode16(c->msg_buf, NotifyPeer);
     c->msg_buf = encode32(c->msg_buf, peer_id);
     send_to_punch_server(c);
@@ -203,6 +201,7 @@ static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_inf
         for (; j < i; ++j) {
             close(holes[j]);
         }
+        printf("timout, not connected\n");
     }
 
     return 0;
@@ -220,6 +219,9 @@ static void* server_notify_handler(void* data) {
             break;
         }
     }
+
+    verbose_log("recv command from server");
+
     peer.port = ntohs(peer.port);
     peer.type = ntohs(peer.type);
 

@@ -97,6 +97,7 @@ int main(int argc, char** argv)
     server_addr.sin_port = htons(DEFAULT_SERVER_PORT);
 
     client c;
+    c.type = type;
     if (enroll(self, server_addr, &c) < 0) {
         printf("failed to enroll\n");
 
