@@ -110,8 +110,6 @@ int main(int argc, char** argv)
     }
     printf("enroll successfully, ID: %d\n", c.id);
 
-    pthread_t tid = wait_for_command(&c.sfd);
-
     if (peer_id) {
         printf("connecting to peer %d\n", peer_id);
         if (connect_to_peer(&c, peer_id) < 0) {
@@ -120,6 +118,8 @@ int main(int argc, char** argv)
             return -1;
         }
     }
+
+    pthread_t tid = wait_for_command(&c.sfd);
 
     pthread_join(tid, NULL);
     return 0;

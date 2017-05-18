@@ -222,12 +222,10 @@ static void* server_notify_handler(void* data) {
         }
     }
 
-    verbose_log("recv command from server");
-
     peer.port = ntohs(peer.port);
     peer.type = ntohs(peer.type);
 
-    printf("recv command, ready to connect to %s:%d\n", peer.ip, peer.port);
+    printf("recved command, ready to connect to %s:%d\n", peer.ip, peer.port);
 
     struct sockaddr_in peer_addr;
 
