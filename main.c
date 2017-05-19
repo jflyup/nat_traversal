@@ -34,7 +34,7 @@ int main(int argc, char** argv)
 
     static char usage[] = "usage: [-h] [-H STUN_HOST] [-t ttl] [-P STUN_PORT] [-s punch server] [-d id] [-i SOURCE_IP] [-p SOURCE_PORT] [-v verbose]\n";
     int opt;
-    while ((opt = getopt (argc, argv, "H:h:P:p:s:d:i")) != -1)
+    while ((opt = getopt (argc, argv, "H:h:t:P:p:s:d:i")) != -1)
     {
         switch (opt)
         {
