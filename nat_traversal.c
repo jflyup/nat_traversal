@@ -77,7 +77,7 @@ static int punch_hole(struct sockaddr_in peer_addr, int ttl) {
           } */
 
         /* TODO we can use traceroute to get the number of hops to the peer
-         * to make sure this packet woudn't reach the peer but get through the NAT of itself
+         * to make sure this packet woudn't reach the peer but get through the NAT in front of itself
          */
         setsockopt(hole, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
 
@@ -195,7 +195,7 @@ static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_inf
     c->msg_buf = encode32(c->msg_buf, peer_id);
     send_to_punch_server(c);
 
-    struct timeval timeout={10, 0};
+    struct timeval timeout={100, 0};
     int fd = wait_for_peer(holes, i, &timeout);
     if (fd > 0) {
         on_connected(fd);
@@ -340,9 +340,9 @@ void on_connected(int sock) {
     struct sockaddr_in remote_addr;
     socklen_t fromlen = sizeof remote_addr;
     recvfrom(sock, buf, MSG_BUF_SIZE, 0, (struct sockaddr *)&remote_addr, &fromlen);
+    printf("recv %s\n", buf);
 
     printf("connected with peer from %s:%d\n", inet_ntoa(remote_addr.sin_addr), ntohs(remote_addr.sin_port));
-    printf("recv %s\n", buf);
 
     // restore the ttl
     int ttl = 64;
