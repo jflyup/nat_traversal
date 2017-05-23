@@ -148,20 +148,20 @@ static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_inf
     // TODO choose port prediction strategy
 
     /* 
-	* according to birthday paradox, probability that port randomly chosen from [1024, 65535] 
-	* will collide with another one chosen by the same way is 
-	* p(n) = 1-(64511!/(64511^n*64511!))
-	* where '!' is the factorial operator, n is the number of ports chosen.
-	* P(100)=0.073898
-	* P(200)=0.265667
-	* P(300)=0.501578
-	* P(400)=0.710488
-	* P(500)=0.856122
-	* P(600)=0.938839
+    * according to birthday paradox, probability that port randomly chosen from [1024, 65535] 
+    * will collide with another one chosen by the same way is 
+    * p(n) = 1-(64511!/(64511^n*64511!))
+    * where '!' is the factorial operator, n is the number of ports chosen.
+    * P(100)=0.073898
+    * P(200)=0.265667
+    * P(300)=0.501578
+    * P(400)=0.710488
+    * P(500)=0.856122
+    * P(600)=0.938839
     * but symmetric NAT has port sensitive filter for incoming packet
     * which makes the probalility decline dramatically. 
     * Moreover, symmetric NATs don't really allocate ports randomly.
-	*/	
+    */  
     struct sockaddr_in peer_addr;
 
     peer_addr.sin_family = AF_INET;
@@ -181,7 +181,8 @@ static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_inf
                 verbose_log("%s, NAT flooding protection triggered, try %d times\n", strerror(errno), i);
                 break;
             }
-
+            // sleep for a while to avoid flooding protection
+            usleep(1000 * 100);
             ++i;
         } else {
             nums[i] = nums[1000];
@@ -255,11 +256,8 @@ static void* server_notify_handler(void* data) {
             break;
         }
 
-        /* add socket to FD_SET and check if connected
-        * set both fields of the timeval structure to zero 
-        * to make select() return immediately
-        */
-        struct timeval tv = {0, 0};
+        // wait for a while
+        struct timeval tv = {0, 1000 * 100};
         int fd = wait_for_peer(sock_array, ++i, &tv);
         if (fd > 0) {
             // connected
@@ -270,7 +268,8 @@ static void* server_notify_handler(void* data) {
         }
     }
 
-    struct timeval tv = {10, 0};
+    printf("holes punched, waiting for peer\n");
+    struct timeval tv = {100, 0};
     int fd = wait_for_peer(sock_array, i, &tv);
     if (fd > 0) {
         on_connected(fd);

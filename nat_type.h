@@ -41,36 +41,36 @@ typedef struct { uint32_t longpart[3]; }  UInt96;
 
 typedef struct 
 {
-	uint32_t magicCookie; // rfc 5389
-	UInt96 tid;
+    uint32_t magicCookie; // rfc 5389
+    UInt96 tid;
 } Id;
 
 typedef struct 
 {
-	uint16_t msgType;
-	uint16_t msgLength; // length of stun body
-	union
-	{
-		UInt128 magicCookieAndTid;
-		Id id;
-	};
+    uint16_t msgType;
+    uint16_t msgLength; // length of stun body
+    union
+    {
+        UInt128 magicCookieAndTid;
+        Id id;
+    };
 } StunHeader;
 
 typedef struct
 {
-	uint16_t type;
-	uint16_t length;
+    uint16_t type;
+    uint16_t length;
 } StunAtrHdr;
 
 typedef struct
 {
-	uint8_t family;
-	uint16_t port;
-	union
-	{
-		uint32_t ipv4;  // in host byte order
-		UInt128 ipv6; // in network byte order
-	} addr;
+    uint8_t family;
+    uint16_t port;
+    union
+    {
+        uint32_t ipv4;  // in host byte order
+        UInt128 ipv6; // in network byte order
+    } addr;
 } StunAtrAddress;
 
 char* encode16(char* buf, uint16_t data);

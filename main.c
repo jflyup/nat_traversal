@@ -25,7 +25,7 @@ int verbose = 0;
 int main(int argc, char** argv)
 {
     char* stun_server = stun_servers[0];
-    char* local_host = "0.0.0.0";
+    char local_ip[16] = "0.0.0.0";
     uint16_t stun_port = DEFAULT_STUN_SERVER_PORT;
     uint16_t local_port = DEFAULT_LOCAL_PORT;
     char* punch_server = NULL;
@@ -34,7 +34,7 @@ int main(int argc, char** argv)
 
     static char usage[] = "usage: [-h] [-H STUN_HOST] [-t ttl] [-P STUN_PORT] [-s punch server] [-d id] [-i SOURCE_IP] [-p SOURCE_PORT] [-v verbose]\n";
     int opt;
-    while ((opt = getopt (argc, argv, "H:h:t:P:p:s:d:i")) != -1)
+    while ((opt = getopt (argc, argv, "H:h:t:P:p:s:d:i:v")) != -1)
     {
         switch (opt)
         {
@@ -50,20 +50,21 @@ int main(int argc, char** argv)
             case 'P':
                 stun_port = atoi(optarg);
                 break;
-            case 's':
-                punch_server = optarg;
-                break;
             case 'p':
                 local_port = atoi(optarg);
+                break;
+            case 's':
+                punch_server = optarg;
                 break;
             case 'd':
                 peer_id = atoi(optarg);
                 break;
             case 'i':
-                local_host = optarg;
+                strncpy(local_ip, optarg, 16);
                 break;
             case 'v':
                 verbose = 1;
+                break;
             case '?':
             default:
                 printf("invalid option: %c\n", opt);
@@ -77,7 +78,7 @@ int main(int argc, char** argv)
     uint16_t ext_port = 0;
 
     // TODO we should try another STUN server if failed
-    nat_type type = detect_nat_type(stun_server, stun_port, local_host, local_port, ext_ip, &ext_port);
+    nat_type type = detect_nat_type(stun_server, stun_port, local_ip, local_port, ext_ip, &ext_port);
 
     printf("NAT type: %s\n", get_nat_desc(type));
     if (ext_port) {
