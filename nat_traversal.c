@@ -20,7 +20,7 @@
 #define MSG_BUF_SIZE 512
 
 // file scope variables
-static int nums[MAX_PORT - MIN_PORT];
+static int ports[MAX_PORT - MIN_PORT];
 
 static int send_to_punch_server(client* c) {
     int n = send(c->sfd, c->buf, c->msg_buf - c->buf, 0);
@@ -63,18 +63,18 @@ static int send_dummy_udp_packet(int fd, struct sockaddr_in addr) {
 static int punch_hole(struct sockaddr_in peer_addr, int ttl) {
     int hole = socket(AF_INET, SOCK_DGRAM, 0);
     if (hole != -1) {
-
-        // no need to choose local port for now, let OS do that
-        /*struct sockaddr_in local_addr;
-          local_addr.sin_family = AF_INET;
-          local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-          local_addr.sin_port = htons(DEFAULT_LOCAL_PORT + 1); 
-          if (bind(hole, (struct sockaddr *)&local_addr, sizeof(local_addr))) {
-              if (errno == EADDRINUSE) {
-                  printf("addr in use, try another port\n");
-                  return -1; 
-              }   
-          } */
+          //struct sockaddr_in local_addr;
+          //local_addr.sin_family = AF_INET;
+          //local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+          //local_addr.sin_port = htons(DEFAULT_LOCAL_PORT + 1); 
+          //int reuse_addr = 1;
+          //setsockopt(hole, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse_addr, sizeof(reuse_addr));
+          //if (bind(hole, (struct sockaddr *)&local_addr, sizeof(local_addr))) {
+          //    if (errno == EADDRINUSE) {
+          //        printf("addr already in use, try another port\n");
+          //        return -1; 
+          //    }   
+          //}
 
         /* TODO we can use traceroute to get the number of hops to the peer
          * to make sure this packet woudn't reach the peer but get through the NAT in front of itself
@@ -168,24 +168,24 @@ static int connect_to_symmetric_nat(client* c, uint32_t peer_id, struct peer_inf
     peer_addr.sin_addr.s_addr = inet_addr(remote_peer.ip);
 
     int *holes = malloc(NUM_OF_PORTS * sizeof(int));
-    shuffle(nums, MAX_PORT - MIN_PORT + 1);
+    shuffle(ports, MAX_PORT - MIN_PORT + 1);
 
     int i = 0;
     for (; i < NUM_OF_PORTS;) {
-        uint16_t port = nums[i];
+        uint16_t port = ports[i];
         if (port != remote_peer.port) { // exclude the used one
             peer_addr.sin_port = htons(port);
 
             if ((holes[i] = punch_hole(peer_addr, c->ttl)) < 0) {
                 // NAT in front of us wound't tolerate too many ports used by one application
-                verbose_log("%s, NAT flooding protection triggered, try %d times\n", strerror(errno), i);
+                verbose_log("failed to punch hole, error: %s\n", strerror(errno));
                 break;
             }
             // sleep for a while to avoid flooding protection
             usleep(1000 * 100);
             ++i;
         } else {
-            nums[i] = nums[1000];
+            ports[i] = ports[1000];
             continue;
         }
     }
@@ -236,11 +236,11 @@ static void* server_notify_handler(void* data) {
     int sock_array[NUM_OF_PORTS];
     int i = 0;
 
-    shuffle(nums, MAX_PORT - MIN_PORT + 1);
+    shuffle(ports, MAX_PORT - MIN_PORT + 1);
     // send probe packets, check if connected with peer, if yes, stop probing
     for (; i < NUM_OF_PORTS;) {
-        if (nums[i] == peer.port) {
-            nums[i] = nums[1000]; // TODO
+        if (ports[i] == peer.port) {
+            ports[i] = ports[1000]; // TODO
             continue;
         }
         if ((sock_array[i] = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -248,7 +248,7 @@ static void* server_notify_handler(void* data) {
             break;
         }
 
-        peer_addr.sin_port = htons(nums[i]);
+        peer_addr.sin_port = htons(ports[i]);
 
         // let OS choose available ports
         if (send_dummy_udp_packet(sock_array[i], peer_addr) < 0) {
@@ -288,7 +288,7 @@ static void* server_notify_handler(void* data) {
 int enroll(struct peer_info self, struct sockaddr_in punch_server, client* c) {
     int i, temp;
     for (i = 0, temp = MIN_PORT; temp <= MAX_PORT; i++, temp++) {
-        nums[i] = temp;
+        ports[i] = temp;
     }
 
     int server_sock = socket(AF_INET, SOCK_STREAM, 0);

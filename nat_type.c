@@ -204,7 +204,7 @@ static int send_bind_request(int sock, const char* remote_host, uint16_t remote_
                 }
                 break;
             default:
-                // ignore
+                // ignore other attributes
                 break;
             }
             body += attrLen + attrLenPad;
@@ -224,15 +224,14 @@ const char* get_nat_desc(nat_type type) {
 nat_type detect_nat_type(const char* stun_host, uint16_t stun_port, const char* local_ip, uint16_t local_port, char* ext_ip, uint16_t* ext_port) {
     uint32_t mapped_ip = 0;
     uint16_t mapped_port = 0;
-    int s;
-    if((s = socket(AF_INET, SOCK_DGRAM, 0)) <= 0)  {  
+    int s = socket(AF_INET, SOCK_DGRAM, 0);
+    if (s <= 0)  {  
         return Error;  
     }
 
     nat_type nat_type;
 
     int reuse_addr = 1;
-
     setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse_addr, sizeof(reuse_addr));
 
     struct sockaddr_in local_addr;
